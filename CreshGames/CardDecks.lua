@@ -1,4 +1,4 @@
-local _, CC = ...
+﻿local _, CC = ...
 if not CC then return end
 
 local Decks = {
@@ -17,7 +17,7 @@ local floor, max = math.floor, math.max
 local upper = string.upper
 
 local function library()
-    return _G.CreshChatCardDecks or {}
+    return _G.CreshGamesCardDecks or {}
 end
 
 local function hashText(text)

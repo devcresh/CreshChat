@@ -580,7 +580,8 @@ function A:RecordQuestTurnIn(questID, sourceGame)
             e.zoneQuestCounts[zoneKey] = mapValue(e.zoneQuestCounts, zone) + 1
         end
     end
-    if CC.BattlePass and CC.BattlePass.AddPassXP then CC.BattlePass:AddPassXP(5, "WoW quest", true) end
+    -- Cross-addon call (wire 2/3) — Docs/INTEGRATION-CONTRACT.md Phase 7.
+    if _G.CreshGamesAPI and _G.CreshGamesAPI.AddMainPassXP then _G.CreshGamesAPI.AddMainPassXP(5, "WoW quest") end
     self:EvaluateAll(false)
 end
 

@@ -1,0 +1,12 @@
+## Interface: 20505
+## Title: CreshCollect
+## Notes: Achievements, collections and progression tracking for TBC Anniversary. Part of the CreshSuite.
+## Author: creshor
+## Version: 0.1.0
+## SavedVariables: CreshCollectDB
+
+Core.lua
+Achievements.lua
+AchievementExpansion.lua
+ClassAchievements.lua
+CombatTracker.lua

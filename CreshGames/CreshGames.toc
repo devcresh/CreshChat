@@ -1,0 +1,19 @@
+## Interface: 20505
+## Title: CreshGames
+## Notes: Dungeon Dwellers, minigames and Battle Pass systems for TBC Anniversary. Part of the CreshSuite.
+## Author: creshor
+## Version: 0.1.0
+## SavedVariables: CreshGamesDB
+
+Core.lua
+GameAudio.lua
+CardDeckLibrary.lua
+CardDecks.lua
+BattlePass.lua
+DungeonDwellersProgression.lua
+ChessTextureManifest.lua
+DungeonDwellersAssetSets.lua
+DungeonCrawlerContent.lua
+TetrisThemes.lua
+Games.lua
+SoloGames.lua

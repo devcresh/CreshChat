@@ -1,4 +1,4 @@
-local ADDON_NAME, CC = ...
+﻿local ADDON_NAME, CC = ...
 if not CC then return end
 
 local Solo = {
@@ -16,7 +16,7 @@ local upper, lower = string.upper, string.lower
 local format = string.format
 local unpack = unpack or table.unpack
 
-local EIGHTBIT_GAME_ICON_ROOT = "Interface\\AddOns\\CreshChat\\Media\\Games\\Icons8Bit\\"
+local EIGHTBIT_GAME_ICON_ROOT = "Interface\\AddOns\\CreshGames\\Media\\Games\\Icons8Bit\\"
 
 local function now()
     if type(GetTime) == "function" then return GetTime() end
@@ -4081,19 +4081,19 @@ end
 -- searches. It is intentionally lightweight enough to run inside WoW's Lua UI.
 local SOLO_CHESS_BACK = { "R", "N", "B", "Q", "K", "B", "N", "R" }
 local SOLO_CHESS_VALUE = { P = 100, N = 320, B = 330, R = 500, Q = 900, K = 20000 }
-local SOLO_CHESS_TEXTURES = (_G.CreshChatChessTextures and _G.CreshChatChessTextures.Notation) or {
-    WK = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\King_White.tga",
-    WQ = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Queen_White.tga",
-    WR = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Rook_White.tga",
-    WB = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Bishop_White.tga",
-    WN = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Knight_White.tga",
-    WP = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Pawn_White.tga",
-    BK = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\King_Black.tga",
-    BQ = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Queen_Black.tga",
-    BR = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Rook_Black.tga",
-    BB = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Bishop_Black.tga",
-    BN = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Knight_Black.tga",
-    BP = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Pawn_Black.tga",
+local SOLO_CHESS_TEXTURES = (_G.CreshGamesChessTextures and _G.CreshGamesChessTextures.Notation) or {
+    WK = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\King_White.tga",
+    WQ = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Queen_White.tga",
+    WR = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Rook_White.tga",
+    WB = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Bishop_White.tga",
+    WN = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Knight_White.tga",
+    WP = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Pawn_White.tga",
+    BK = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\King_Black.tga",
+    BQ = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Queen_Black.tga",
+    BR = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Rook_Black.tga",
+    BB = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Bishop_Black.tga",
+    BN = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Knight_Black.tga",
+    BP = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Pawn_Black.tga",
 }
 local SOLO_CHESS_PIECE_SIZE = 44
 local SOLO_CHESS_MATE = 100000
@@ -5000,7 +5000,7 @@ local DUNGEON_CLASSES = {
         weakness = "Slowest damage output and relies on attrition or minions.",
     },
 }
-local DUNGEON_CONTENT = CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+local DUNGEON_CONTENT = CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
 for classKey, classData in pairs(DUNGEON_CLASSES) do
     classData.armourSets = DUNGEON_CONTENT and DUNGEON_CONTENT.GetArmourSets and DUNGEON_CONTENT:GetArmourSets(classKey) or {}
 end
@@ -5053,10 +5053,10 @@ local DUNGEON_MINION_VARIANTS = {
 }
 
 local function dungeonTexture(setKey, assetKey)
-    if type(_G.CreshChatDDGetTexture) == "function" then
-        return _G.CreshChatDDGetTexture(setKey, assetKey)
+    if type(_G.CreshGamesDDGetTexture) == "function" then
+        return _G.CreshGamesDDGetTexture(setKey, assetKey)
     end
-    local sets = _G.CreshChatDungeonDwellersSets
+    local sets = _G.CreshGamesDungeonDwellersSets
     local set = sets and sets[setKey]
     return set and set.assets and set.assets[assetKey] or nil
 end
@@ -5134,7 +5134,7 @@ local function dungeonArmourStatText(stats)
     return #parts > 0 and concat(parts, " · ") or "Cosmetic only"
 end
 
-local DUNGEON_DICE_ROOT = "Interface\\AddOns\\CreshChat\\Media\\Games\\DungeonDwellers\\Dice\\"
+local DUNGEON_DICE_ROOT = "Interface\\AddOns\\CreshGames\\Media\\Games\\DungeonDwellers\\Dice\\"
 local function dungeonDiceTexture(value)
     if value == "WEB" then return DUNGEON_DICE_ROOT .. "Dice_Web.tga" end
     value = max(1, min(8, floor(tonumber(value) or 1)))
@@ -5212,7 +5212,7 @@ local DUNGEON_MINION_FIRST = { "Biscuit", "Blink", "Bramble", "Cinder", "Clank",
 local DUNGEON_MINION_TYPES = { "Bat", "Beetle", "Familiar", "Imp", "Mimic", "Moth", "Ooze", "Rat", "Sprite", "Wisp" }
 
 local function dungeonNewEnemyDefinition(level, rng)
-    local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+    local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
     if not content or type(content.GetEnemyPool) ~= "function" or not rng then return nil end
     local chance = min(72, 34 + floor(max(1, tonumber(level) or 1) / 3))
     if rng:Next(100) > chance then return nil end
@@ -5231,7 +5231,7 @@ end
 local function dungeonEnemy(level, index, boss, rng)
     level = floor(max(1, tonumber(level) or 1))
     local tier = floor((level - 1) / 5)
-    local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+    local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
     local hp, attack
     if content and type(content.GetScaledEnemyStats) == "function" then
         hp, attack = content:GetScaledEnemyStats(level, boss == true, rng)
@@ -6030,7 +6030,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:GetEquippedArmour()
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         if not content or not save or not save.dungeon then return nil end
         local classKey = upper(tostring(self.classKey or "PALADIN"))
@@ -6094,7 +6094,7 @@ function Solo:BuildDUNGEONView()
     function view:BuildCollectionEntries()
         local save = ensureSave()
         local dungeon = save and save.dungeon or {}
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local entries = {}
         local typeFilter = upper(tostring(self.collectionType or "ALL"))
         local stateFilter = upper(tostring(self.collectionState or "ALL"))
@@ -6392,7 +6392,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:SetArmour(setKey, restart)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         if not content or not save or not save.dungeon then return end
         local classKey = upper(tostring(self.classKey or "PALADIN"))
@@ -6895,7 +6895,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:GenerateRoom(isRetry)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local bossRoom = content and type(content.IsBossLevel) == "function" and content:IsBossLevel(self.room) or self.room % 10 == 0
         local count = bossRoom and 1 or self.rng:Next(3)
         if bossRoom and not isRetry then self:CreateBossCheckpoint() end
@@ -6941,7 +6941,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:TryPurchaseArmourWithShards()
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         if not content or not save or not save.dungeon then return nil end
         local threshold = (content.pity and content.pity.shardsForArmour) or 10
@@ -6960,7 +6960,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:QueueBossCrate(crateKey, boss, rewardParts, sourceLabel)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         local crate = content and content:GetCrate(crateKey) or nil
         if not crate or not save or not save.dungeon then return nil end
@@ -6982,7 +6982,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:FindCrateArmourChoice(maxTier)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         if not content or not save or not save.dungeon then return nil end
         local classKey = upper(tostring(self.classKey or "PALADIN"))
@@ -6995,7 +6995,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:BuildCrateChoices(drop)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local crate = content and content:GetCrate(drop and drop.key) or nil
         if not crate then return {} end
         local quality = ({ COMMON = 1, UNCOMMON = 2, RARE = 3, EPIC = 4 })[upper(tostring(crate.rarity or "COMMON"))] or 1
@@ -7070,7 +7070,7 @@ function Solo:BuildDUNGEONView()
 
     function view:ShowNextCrate()
         if self.activeCrate or #(self.pendingCrates or {}) == 0 then return end
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         self.activeCrate = self.pendingCrates[1]
         self.crateChoices = nil
         self.crateRevealed = false
@@ -7123,7 +7123,7 @@ function Solo:BuildDUNGEONView()
         if not self.activeCrate or not self.crateRevealed then return end
         local choice = self.crateChoices and self.crateChoices[tonumber(index) or 0]
         if not choice then return end
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         local crate = content and content:GetCrate(self.activeCrate.key) or nil
         if not save or not save.dungeon or not crate then return end
@@ -7161,7 +7161,7 @@ function Solo:BuildDUNGEONView()
     end
 
     function view:AwardArmour(maxTier, sourceLabel, exactTier)
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local save = ensureSave()
         if not content or not save or not save.dungeon then return nil, false end
         local classKey = upper(tostring(self.classKey or "PALADIN"))
@@ -7198,7 +7198,7 @@ function Solo:BuildDUNGEONView()
         local definition = boss and boss.bossDefinition or nil
         local weights = definition and definition.crateWeights or { ADVENTURER = 70, WARBOUND = 20, ROYAL = 9, VOID = 1 }
         local save = ensureSave()
-        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshChatDungeonCrawlerContent
+        local content = DUNGEON_CONTENT or CC.DungeonCrawlerContent or _G.CreshGamesDungeonCrawlerContent
         local pity = content and content.pity or {}
         if save and save.dungeon and (save.dungeon.voidCratePity or 0) >= ((pity.voidCrates or 10) - 1) then return "VOID" end
         local roll = self.rng:Next(100)
