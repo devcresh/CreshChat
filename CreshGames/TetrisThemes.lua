@@ -1,4 +1,4 @@
-local ADDON_NAME, CC = ...
+﻿local ADDON_NAME, CC = ...
 if not CC then return end
 
 local Tetris = {
@@ -26,7 +26,7 @@ local floor, min, max = math.floor, math.min, math.max
 local upper = string.upper
 
 local PIECES = { "I", "O", "T", "S", "Z", "J", "L" }
-local TETRIS_BACKGROUND_ROOT = "Interface\\AddOns\\CreshChat\\Media\\Games\\Tetris\\Backgrounds\\"
+local TETRIS_BACKGROUND_ROOT = "Interface\\AddOns\\CreshGames\\Media\\Games\\Tetris\\Backgrounds\\"
 
 -- Official-style gravity reference points from the common Tetris Worlds /
 -- Guideline curve. CreshChat stretches the relative curve across 1,000 game

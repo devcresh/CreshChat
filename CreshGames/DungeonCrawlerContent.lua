@@ -1,10 +1,10 @@
-local _, CC = ...
+﻿local _, CC = ...
 
 -- Dungeon Crawler content library.
 -- Texture pack v4.0 is live for expansion enemies, active-class armour, milestone chests and reward icons.
 -- All milestone bosses now use integrated art; reserved future Druid/Shaman armour keeps stable placeholder paths until supplied.
 
-local ROOT = "Interface\\AddOns\\CreshChat\\Media\\Games\\DungeonDwellers"
+local ROOT = "Interface\\AddOns\\CreshGames\\Media\\Games\\DungeonDwellers"
 
 local Content = {
     version = CC and CC.version or "0.3.63-account-friends",
@@ -1080,7 +1080,7 @@ function Content:GetArmourForLevel(classKey, level)
     return selected
 end
 
-_G.CreshChatDungeonCrawlerContent = Content
+_G.CreshGamesDungeonCrawlerContent = Content
 if CC then
     CC.DungeonCrawlerContent = Content
     CC.Assets = CC.Assets or {}

@@ -1,11 +1,11 @@
-local _, CC = ...
+﻿local _, CC = ...
 if not CC then return end
 
 local Audio = { version = CC.version, loopSeconds = 11.95, generation = 0 }
 CC.GameAudio = Audio
 if CC.RegisterModule then CC:RegisterModule("GameAudio", Audio) end
 
-local ROOT = "Interface\\AddOns\\CreshChat\\Media\\GameAudio\\"
+local ROOT = "Interface\\AddOns\\CreshGames\\Media\\GameAudio\\"
 local MUSIC = {
     FROGGER = "Music\\arcade_loop", TETRIS = "Music\\arcade_loop", PONG = "Music\\arcade_loop",
     HOLDEM = "Music\\cards_loop", BLACKJACK = "Music\\cards_loop", HIGHERLOWER = "Music\\cards_loop",

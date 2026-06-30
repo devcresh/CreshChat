@@ -125,10 +125,6 @@ local SHOP_THEMES = {
     {"STORMWIND", "Stormwind City", 850, "Alliance blue, royal gold and bright city stone."},
     {"ORGRIMMAR", "Orgrimmar", 850, "Horde crimson, iron brown and fortress firelight."},
 }
-for _, row in ipairs(SHOP_THEMES) do
-    paletteInfo(row[1], row[2], row[3], row[4], "SHOP")
-    Pass.themeOrder[#Pass.themeOrder + 1] = row[1]
-end
 
 -- Twenty zone themes earned from the extended Battle Pass (levels 10-200, every 10 levels).
 -- Levels 1-100: classic Azeroth and early Outland zones (exclusive to the pass).
@@ -145,11 +141,36 @@ Pass.passThemeRewards = {
     [170] = "SILVERMOON",          [180] = "BLACK_TEMPLE",     [190] = "SUNWELL",
     [200] = "DARK_PORTAL",
 }
-for level = 10, 200, 10 do
-    local key = Pass.passThemeRewards[level]
-    local name = CC.ThemeLibrary and CC.ThemeLibrary.display and CC.ThemeLibrary.display[key] or key
-    paletteInfo(key, name, 0, "Exclusive Battle Pass theme unlocked at Level " .. level .. ".", "PASS", level)
-    Pass.themeOrder[#Pass.themeOrder + 1] = key
+
+-- paletteInfo() depends on CC.UI.THEME_PRESETS, which (when BattlePass.lua and UI.lua are
+-- ever in different addons) is only available after a PLAYER_LOGIN-time cross-addon bridge
+-- has run. Building these two theme groups must therefore be deferred past file-load time -
+-- see Docs/MIGRATION.md "BattlePass.lua: attempted, reverted, here's why" for the bug this
+-- fixes. Harmless no-op timing change while BattlePass.lua stays in CreshChat (UI.lua already
+-- loads earlier in the same TOC), and required before BattlePass.lua can safely move addons.
+local paletteThemesBuilt = false
+local function buildPaletteThemes()
+    if paletteThemesBuilt then return end
+    paletteThemesBuilt = true
+    for _, row in ipairs(SHOP_THEMES) do
+        paletteInfo(row[1], row[2], row[3], row[4], "SHOP")
+        Pass.themeOrder[#Pass.themeOrder + 1] = row[1]
+    end
+    for level = 10, 200, 10 do
+        local key = Pass.passThemeRewards[level]
+        local name = CC.ThemeLibrary and CC.ThemeLibrary.display and CC.ThemeLibrary.display[key] or key
+        paletteInfo(key, name, 0, "Exclusive Battle Pass theme unlocked at Level " .. level .. ".", "PASS", level)
+        Pass.themeOrder[#Pass.themeOrder + 1] = key
+    end
+end
+
+do
+    local initFrame = CreateFrame("Frame")
+    initFrame:RegisterEvent("PLAYER_LOGIN")
+    initFrame:SetScript("OnEvent", function(self)
+        buildPaletteThemes()
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end)
 end
 
 local function now()

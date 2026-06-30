@@ -60,9 +60,9 @@ end
 
 function Developer:GetAssetCounts()
     local sounds = _G.CreshChatSoundLibrary
-    local decks = _G.CreshChatCardDecks
-    local chess = _G.CreshChatChessTextures
-    local dungeon = _G.CreshChatDungeonDwellersSets
+    local decks = _G.CreshGamesCardDecks
+    local chess = _G.CreshGamesChessTextures
+    local dungeon = _G.CreshGamesDungeonDwellersSets
 
     local deckCount, cardFaces = 0, 0
     if type(decks) == "table" then

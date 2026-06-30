@@ -1,4 +1,4 @@
-local ADDON_NAME, CC = ...
+﻿local ADDON_NAME, CC = ...
 if not CC then return end
 
 local Games = {
@@ -213,7 +213,7 @@ local function setButtonAccent(button, accent)
     applyBackdrop(button, button.creshBaseColor, accent)
 end
 
-local EIGHTBIT_GAME_ICON_ROOT = "Interface\\AddOns\\CreshChat\\Media\\Games\\Icons8Bit\\"
+local EIGHTBIT_GAME_ICON_ROOT = "Interface\\AddOns\\CreshGames\\Media\\Games\\Icons8Bit\\"
 
 local GAME_NAMES = {
     CHESS = "Chess",
@@ -1052,19 +1052,19 @@ end
 
 -- CHESS -----------------------------------------------------------------------
 local CHESS_BACK = { "R", "N", "B", "Q", "K", "B", "N", "R" }
-local CHESS_TEXTURES = (_G.CreshChatChessTextures and _G.CreshChatChessTextures.Notation) or {
-    WK = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\King_White.tga",
-    WQ = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Queen_White.tga",
-    WR = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Rook_White.tga",
-    WB = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Bishop_White.tga",
-    WN = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Knight_White.tga",
-    WP = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\White\\Pawn_White.tga",
-    BK = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\King_Black.tga",
-    BQ = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Queen_Black.tga",
-    BR = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Rook_Black.tga",
-    BB = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Bishop_Black.tga",
-    BN = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Knight_Black.tga",
-    BP = "Interface\\AddOns\\CreshChat\\Media\\Games\\Chess\\Black\\Pawn_Black.tga",
+local CHESS_TEXTURES = (_G.CreshGamesChessTextures and _G.CreshGamesChessTextures.Notation) or {
+    WK = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\King_White.tga",
+    WQ = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Queen_White.tga",
+    WR = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Rook_White.tga",
+    WB = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Bishop_White.tga",
+    WN = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Knight_White.tga",
+    WP = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\White\\Pawn_White.tga",
+    BK = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\King_Black.tga",
+    BQ = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Queen_Black.tga",
+    BR = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Rook_Black.tga",
+    BB = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Bishop_Black.tga",
+    BN = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Knight_Black.tga",
+    BP = "Interface\\AddOns\\CreshGames\\Media\\Games\\Chess\\Black\\Pawn_Black.tga",
 }
 local CHESS_PIECE_SIZE = 44
 
@@ -2733,7 +2733,7 @@ function Games:ApplyTheme()
 end
 
 -- Addon event bridge -----------------------------------------------------------
-local eventFrame = CreateFrame("Frame", "CreshChatGamesEventFrame")
+local eventFrame = CreateFrame("Frame", "CreshGamesEventFrame")
 for _, eventName in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "CHAT_MSG_ADDON", "PLAYER_LOGOUT", "FRIENDLIST_UPDATE", "GROUP_ROSTER_UPDATE", "GUILD_ROSTER_UPDATE", "PLAYER_TARGET_CHANGED" }) do pcall(eventFrame.RegisterEvent, eventFrame, eventName) end
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)

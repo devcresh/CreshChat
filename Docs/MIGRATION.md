@@ -1,0 +1,91 @@
+# CreshChat → CreshSuite Migration
+
+Tracks progress of the three-addon split (CreshChat / CreshCollect / CreshGames). See [SUITE_ARCHITECTURE.md](SUITE_ARCHITECTURE.md) for the target layout and ownership map, and [INTEGRATION-CONTRACT.md](INTEGRATION-CONTRACT.md) for the optional cross-addon API/event design.
+
+## Status
+
+| Phase | Description | Status |
+|---|---|---|
+| 0 | Safety/baseline audit | Done — branch `tripple-addon`, clean tree, commit `f127482` |
+| 1 | Architecture map (this doc set) | Done |
+| 2 | Repo/workspace structure | Done — `CreshCollect/`, `CreshGames/` skeletons + `CreshSuite.code-workspace` + AddOns junctions |
+| 3 | Extract CreshChat | Done — no physical changes needed. CreshChat already sits at the repo root (per the Phase-2 layout decision); `Friends.lua`, `Voice.lua`, `Quest.lua`, `SoundLibrary.lua`, `Themes.lua` verified free of any game/achievement cross-references |
+| 4 | Extract CreshCollect | Done for the safely-extractable scope — `Achievements.lua`, `CombatTracker.lua`, `AchievementExpansion.lua`, `ClassAchievements.lua` moved to `CreshCollect/`, zero internal content changes needed. Three files deliberately stay in CreshChat indefinitely (not just "for now") — see "Why DungeonAchievements/Progression/ProgressRouter stay in CreshChat" below for the concrete reason each one can't safely move yet |
+| 5 | Extract CreshGames | **Done for the safely-extractable scope** — all game Lua files and all game media moved. `GameAudio.lua`, `CardDeckLibrary.lua`, `CardDecks.lua`, `BattlePass.lua`, `DungeonDwellersProgression.lua`, `Games.lua`, `SoloGames.lua`, `ChessTextureManifest.lua`, `TetrisThemes.lua`, `DungeonDwellersAssetSets.lua`, `DungeonCrawlerContent.lua` moved (plus `Media/GameAudio/`, `Media/Games/Cards/`, `Media/Games/Chess/`, `Media/Games/Tetris/`, `Media/Games/DungeonDwellers/`, `Media/Games/Icons8Bit/` — ~813 files total). All path strings in moved and already-in-CreshGames files bulk-rewritten `CreshChat→CreshGames`. `CC.Tetris` removed from CreshGames reverse bridge (now local), added to CreshChat shim. Remaining in CreshChat intentionally — see sections below |
+| 6 | Remove obsolete combined wiring | **Partial** — all 10 legacy `CreshChat`-prefixed globals in CreshGames files renamed to `CreshGames` prefix (`CreshGamesCardDecks`, `CreshGamesChessTextures`, `CreshGamesDungeonDwellersSets`, etc.). `Developer.lua`'s three nil-guarded references updated to match. Shim/bridge blocks updated with accurate `REMOVE WHEN` conditions instead of the stale "Remove in Phase 6" placeholder. The shims themselves cannot be fully removed yet — `DungeonAchievements.lua`, `Progression.lua`, `Settings.lua`, `UI.lua`, `ProgressHub.lua` and `Developer.lua` still remain in CreshChat and rely on them |
+| 7 | Optional integration boundaries | **Done for Phase 7 minimum scope** — event dispatch (`addon:On`/`addon:Fire`) + detection helper (`IsAddonLoaded` with TBC Anniversary fallback) added to all three Core.lua files. Readiness globals (`_G.CRESH_CHAT_READY`, `_G.CRESH_COLLECT_READY`, `_G.CRESH_GAMES_READY`) set and events fired on `PLAYER_LOGIN`. `CreshGamesAPI` wired with three public functions: `AddMainPassXP`, `AddMainPassCoins`, `RecordDungeonPassZone`. Three direct cross-calls replaced: `Progression.lua` lines 352 (WoW mob defeated → `AddMainPassXP`) and 317–319 (zone discovery → `RecordDungeonPassZone`); `CreshCollect/AchievementExpansion.lua` line 583 (quest turn-in → `AddMainPassXP`). See `Docs/INTEGRATION-CONTRACT.md` for full design |
+| 8 | Validation and packaging | **Done** — `tools/validate-addons.ps1` (TOC file existence, orphan detection, duplicate SavedVariables, cross-addon DB boundary, forbidden WoW API patterns, media path resolution) and `tools/package-addons.ps1` (three independent release ZIPs with internal structure validation and SHA-256 output) both pass clean. All three addons pass 0 errors, 0 warnings |
+
+## SavedVariables migration map
+
+All data currently lives in one `CreshChatDB` (schema 79). Nothing is renamed or deleted by this migration — each new addon's DB is populated by copying the relevant subtree out of `CreshChatDB`, and the source data stays in place as a read-only fallback until the split is validated.
+
+| Existing data | Current path | New owner | Migration method | Risk |
+|---|---|---|---|---|
+| Chat history, conversations, whisper routes, BN identity/routes | `CreshChatDB.accountChat.*`, `.history`, `.conversations`, `.whisperRoutes`, `.battleNetRoutes*` | `CreshChatDB` (unchanged) | No-op — already CreshChat-owned | Low |
+| Chat window UI layout | `CreshChatDB.ui.*`, `.positions.*`, `.sizes.*`, `.colors.*`, `.sounds.*` | `CreshChatDB` (unchanged) | No-op, pending confirmation no game/achievement UI reads these | Low |
+| Character chat profiles | `CreshChatDB.characterProfiles.*` | `CreshChatDB` (unchanged) | Decide in Phase 3 whether to convert to real `SavedVariablesPerCharacter` | Medium |
+| Solo games, arcade rewards, game history/leaderboards, multiplayer stats, card decks | `CreshChatDB.accountProgression.{soloGames,arcadeRewards,gameHistory,gameLeaderboards,multiplayerStats,cardDecks}` | `CreshGamesDB` | One-time copy on first CreshGames load, guarded by `CreshGamesDB.schemaVersion` | High — Dungeon Dwellers must stay account-wide |
+| Achievements (unlocked/stats/uniqueBosses/professionRanks/visitedZones/expansion/classProgress) | `CreshChatDB.accountProgression.gameProgression.achievements.*` | `CreshCollectDB.gameProgression.achievements.*` (done) | One-time copy via `CreshCollect/Core.lua:MigrateAchievementsFromCreshChat`, preserve `unlocked` keys verbatim — no achievement ID renames | High — zero tolerance for resetting unlocks/claims |
+| Dungeon-only stats (`runs`,`kills`,`bosses`,`bossKillsByType`) | `accountProgression.soloGames.dungeon` | `CreshGamesDB` | Copy; confirm current read sites (both achievements UI and Dungeon Pass UI reference this per `DATA_SCHEMA.md`) before moving | Medium |
+| Command history, player cache | `CreshChatDB.commandHistory`, `.playerCache` | `CreshChatDB` (unchanged) | No-op | Low |
+
+Each new DB gets its own `schemaVersion` field, starting at 1, independent of CreshChat's schema 79 numbering. Migration code must be idempotent (safe to run on every login, no-op after the first successful copy) and must not corrupt data if interrupted partway.
+
+## Risk-ranked work
+
+**Low risk** (mechanical moves once Phase 3/4/5 start): `Friends.lua`, `Voice.lua`, `Quest.lua`, `SoundLibrary.lua`, `Themes.lua` → CreshChat; `GameAudio.lua`, `CardDeckLibrary.lua`, `CardDecks.lua`, `ChessTextureManifest.lua`, `TetrisThemes.lua`, `DungeonDwellersAssetSets.lua`, `DungeonCrawlerContent.lua` → CreshGames; `CombatTracker.lua` → CreshCollect.
+
+**Medium risk**: `Quality.lua` scope confirmation; `BattlePass.lua`/`DungeonDwellersProgression.lua` (currently called directly from CreshCollect-bound files); `ProgressRouter.lua`/`ProgressHub.lua` (role changes after split); `Developer.lua` split; `characterProfiles` per-character SV decision.
+
+**High risk**: `UI.lua` (8,201 lines) and `SoloGames.lua` (7,789 lines) mix multiple domains in one file and must be split by function region, verified line-by-line, not guessed from file/function names; `Core.lua` (5,048 lines) entangles chat capture with the generic module-registry/migration engine every other file currently leans on; `Settings.lua` (1,614 lines) is one panel for three domains; the confirmed direct cross-calls (`Progression.lua` → `BattlePass:AddPassXP`, `AchievementExpansion:RecordQuestTurnIn` → `BattlePass:AddPassXP`, zone discovery → `DungeonDwellersPass:RecordZone`) must become event-based before CreshCollect can be independent of CreshGames; achievement SavedVariables migration (no resets allowed).
+
+## Rollback points
+
+- After Phase 2: delete the new `CreshCollect/`/`CreshGames/` folders and the two AddOns junctions; CreshChat is untouched and was never at risk.
+- After Phase 3 (CreshChat extraction): the original combined files remain in git history; revert the extraction commits.
+- After Phase 4/5: SavedVariables migrations are additive-only (old data never deleted), so reverting code changes leaves `CreshChatDB` fully intact as a fallback.
+
+## Compatibility shim (Phase 4)
+
+`Achievements.lua`, `CombatTracker.lua`, `AchievementExpansion.lua` and `ClassAchievements.lua` now live in CreshCollect; `DungeonAchievements.lua`, `Progression.lua` and `ProgressRouter.lua` stay in CreshChat and reference `CC.Achievements`/`CC.CombatTracker` directly. A temporary shim in CreshChat's `Core.lua` (search "TEMPORARY CreshCollect compatibility shim") forwards `CC.Achievements`/`CC.CombatTracker` from CreshCollect's modules on `PLAYER_LOGIN` when CreshCollect is loaded — every known call site already nil-guards these, so behavior is identical to before when both addons are enabled, and degrades gracefully (skips the achievement-aware bonus, no Lua error) when CreshCollect is absent. A matching reverse bridge in `CreshCollect/Core.lua` forwards `BattlePass`/`UI`/`GameAudio`/`GameProgression`/`ProgressRouter`/`currentProfile` back from CreshChat, so moved code keeps full functionality (rewards, toasts, sounds) while both addons are loaded.
+
+## Why DungeonAchievements/Progression/ProgressRouter stay in CreshChat
+
+These three were investigated and found **not safely extractable yet** — not just deferred for time, but blocked on real dependencies:
+
+- **`DungeonAchievements.lua`**: save root is `CC.db.soloGames.dungeon` (Dungeon Dweller run/kill/boss stats), which is CreshGames-owned data that doesn't exist anywhere yet. Moving it would load cleanly but evaluate every dungeon achievement against an empty table — a silent functional break, not just a missing nice-to-have.
+- **`Progression.lua`**: bundles two domains in one module registered as a single `CC.GameProgression` object — WoW exploration tracking (`AwardExploration`, `ProcessMovement`, `CheckArea`, `RecordKill`, `GetExplorationSummary`; CreshCollect-owned) and per-minigame leveling (`GetGameRecord`, `AddGameXP`, `UpdateBar`, `OnGameStarted`, `OnGameCompleted`, `GetProgress`; CreshGames-owned). Confirmed by grep: `UI.lua`, `SoloGames.lua`, `Games.lua`, `TetrisThemes.lua` all call the minigame-leveling half directly, and none of those files have moved. Splitting `Progression.lua` now would break CreshChat itself. The existing reverse bridge already forwards `CC.GameProgression` to CreshCollect's `Achievements.lua` (which only needs `AwardExploration`/`GetExplorationSummary`), so there's no current need to move or split it — revisit once `UI.lua`/`SoloGames.lua`/`Games.lua`/`TetrisThemes.lua` move to CreshGames in Phase 5, at which point the minigame-leveling half naturally goes with them.
+- **`ProgressRouter.lua`**: turned out to be lower-stakes than the original audit assumed — only `Developer.lua`'s test harness calls it directly, and `Achievements.lua`'s single reference (`CC.ProgressRouter`) is already nil-guarded with a literal-string fallback and covered by the reverse bridge. No blocker, just not yet relevant enough to move; likely follows `BattlePass.lua`/`DungeonDwellersProgression.lua` to CreshGames in Phase 5 since those are its conceptual siblings.
+
+Two narrower, already-accepted gaps:
+- `Achievements:GetGameTotals()` / `GetUnlockCount()` / `GetStat("STEPS"/"ZONES"/"KILLS")` read `CC.db.gameProgression.{games,exploration}`, `CC.db.soloGames`, `CC.db.arcadeRewards`, `CC.db.cardDecks` — all still CreshChat-owned data, not yet bridged for these specific reads. Already nil-guarded in the existing code, so they compute as 0/empty on CreshCollect's own `CreshCollectDB` rather than erroring. The "Cresh Games" achievement category will under-report until Phase 5.
+- `Developer.lua`'s `/cc devreport`/test-suite functions (`tests[8]`–`tests[19]`+) grab `CC.Achievements`/`CC.CombatTracker` without nil-guarding before use — they will error if run while CreshCollect is disabled. Dev-only diagnostic, not gameplay-facing; not fixed in this pass.
+
+## Compatibility shim (Phase 5)
+
+CreshChat's `Core.lua` "TEMPORARY CreshGames compatibility shim" block forwards `CC.GameAudio`/`CC.CardDecks`/`CC.BattlePass`/`CC.DungeonDwellersPass`/`CC.Games`/`CC.SoloGames`/`CC.Tetris` from CreshGames's modules on `PLAYER_LOGIN`. Remaining consumers in CreshChat (`DungeonAchievements.lua`, `Progression.lua`, `Settings.lua`, `Developer.lua`, `UI.lua`) all already nil-guard these. The three-hop chain (CreshGames sets at file-load time → CreshChat's shim forwards on `PLAYER_LOGIN` → CreshCollect's bridge forwards on its own `PLAYER_LOGIN`) depends on CreshChat's `PLAYER_LOGIN` handlers firing before CreshCollect's, which follows from addon load order (`CreshChat` < `CreshCollect` alphabetically). No data-loss risk; worst case if ordering assumption breaks: a sound effect or UI refresh misses on first login after install.
+
+**CreshGames reverse bridge** (`LinkLegacyCreshChatModules()` in `CreshGames/Core.lua`) now forwards only `CC.UI`/`CC.ThemeLibrary`/`CC.GameProgression`/`CC.state` from `_G.CreshChat` — `CC.Games`/`CC.SoloGames`/`CC.Tetris` were removed when those modules became local to CreshGames. Must fire before `BattlePass.lua`'s own `PLAYER_LOGIN` handler — guaranteed by `CreshGames.toc` load order (`Core.lua` first).
+
+## BattlePass.lua: found and fixed a real load-time bug, then moved successfully
+
+First attempt: moved `BattlePass.lua` to `CreshGames/`, built both shim directions, then found a real functional regression on audit (not shipped) — `Pass.premiumThemes` was built in two top-level loops (`SHOP_THEMES`, 10 entries; `Pass.passThemeRewards`, 20 entries) that ran **at file-load time**, before any `PLAYER_LOGIN` handler — including the cross-addon bridge — had a chance to run. Both loops call `paletteInfo(key, name, ...)`, whose first line is `local preset = CC.UI and CC.UI.THEME_PRESETS and CC.UI.THEME_PRESETS[key]; if not preset then return end`. Since `CC.UI` doesn't exist on CreshGames's addon table until the bridge runs, `preset` was always nil at that point, so `paletteInfo` returned immediately without ever setting `Pass.premiumThemes[key]` — for all 30 shop/pass-reward theme keys, every login. `BuyTheme`, `OpenThemeUnlock`, and `ToggleThemePreview` all gate on `self.premiumThemes[theme]` being present, so this wasn't cosmetic — it would have silently disabled premium Battle Pass theme purchasing/unlocking entirely whenever both addons were installed together (the expected common case). The first attempt was reverted rather than shipped with this bug.
+
+The cross-addon `PLAYER_LOGIN` bridge pattern that worked cleanly for `Achievements.lua`/`CombatTracker.lua`/`AchievementExpansion.lua`/`ClassAchievements.lua`/`GameAudio.lua`/`CardDeckLibrary.lua`/`CardDecks.lua` only works because none of *those* files have top-level (file-load-time) code depending on a bridged cross-addon reference — every cross-reference in them is safely inside a function body, called later, well after `PLAYER_LOGIN`. `BattlePass.lua` was the first file found to violate that assumption.
+
+**The fix:** the two loops were extracted into a `buildPaletteThemes()` function, gated by a `paletteThemesBuilt` flag, called once from a new `PLAYER_LOGIN` handler registered inside `BattlePass.lua` itself (not file-load time). This is correct and safe in *both* locations — it doesn't depend on which addon `BattlePass.lua` lives in: while it stayed in CreshChat, `UI.lua` already loaded earlier in the same TOC so this was a behavior-invisible timing shift (verified no other file reads `Pass.premiumThemes`/`Pass.themeOrder` directly, and nothing reads them before `PLAYER_LOGIN` regardless); now that it's in CreshGames, `CreshGames/Core.lua`'s reverse bridge (previous section) populates `CC.UI` before `BattlePass.lua`'s own `PLAYER_LOGIN` handler runs, guaranteed by `CreshGames.toc` load order. Verified no other top-level (zero-indent, outside any function) `CC.*` references remain in the file — only the two standard self-registration lines (`CC.BattlePass = Pass`, `CC:RegisterModule(...)`).
+
+## ~~Why the other four asset files stay in CreshChat~~ (resolved)
+
+`ChessTextureManifest.lua`, `TetrisThemes.lua`, `DungeonDwellersAssetSets.lua`, `DungeonCrawlerContent.lua` previously stayed because `Games.lua` duplicated the Chess paths and `SoloGames.lua` duplicated the Tetris/DungeonDwellers paths directly, so moving the Media folders would have orphaned those references. Once `Games.lua` and `SoloGames.lua` both moved to CreshGames, the remaining duplicate path strings were already in CreshGames-owned files and the full set of four Lua files + four Media folders could move together as one coordinated pass, with a single bulk `CreshChat→CreshGames` path-string rewrite across all six files (including the two already-moved ones that had duplicate constants).
+
+**Cosmetic debt, not a blocker:** `CardDeckLibrary.lua`/`CardDecks.lua` still export globals named `_G.CreshChatCardDecks`, `_G.CreshChatApplyCardTexture`, `_G.CreshChatGetCardTexture`, `_G.CRESHCHAT_CARD_TEXCOORD_*` — left as-is to minimize the diff this round (only the functionally-necessary path strings were rewritten). Only consumed internally between these two files plus one nil-guarded diagnostic counter in `Developer.lua` (`GetAssetCounts`, undercounts cards if `CreshGames` is disabled — dev-only, not gameplay-facing). Rename candidates for Phase 6.
+
+**Stale-data note:** `DungeonAchievements:MigrateFromWoW()` (a one-time, already-flagged historical backfill for new profiles) reads `CC.db.gameProgression.achievements.unlocked` directly in CreshChat — now a frozen snapshot from the moment `Achievements.lua` moved, not live data. Only affects characters that haven't yet triggered this one-time migration; accepted as low-impact.
+
+## Validation after each phase
+
+- `/reload` with only the affected addon enabled — confirm no Lua errors.
+- Toggle every other addon combination (see the seven-combination matrix in the project's migration brief) before moving to the next phase.
+- Confirm SavedVariables values match pre-migration snapshots (manual spot-check of `unlocked` achievement keys, Cresh Coin totals, Dungeon Dweller level).

@@ -314,9 +314,12 @@ function Progression:CheckArea(initial)
     else
         self:AwardExploration(3, 2, "New Area Discovered", area, not initial)
     end
-    if CC:IsFeatureEnabled("games") and CC.DungeonDwellersPass and CC.DungeonDwellersPass.RecordZone then
+    -- Cross-addon call (wire 3/3) — Docs/INTEGRATION-CONTRACT.md Phase 7.
+    -- CreshGames being installed and loaded is now the guard; CC:IsFeatureEnabled("games")
+    -- was an intra-addon flag that no longer applies across addon boundaries.
+    if _G.CreshGamesAPI and _G.CreshGamesAPI.RecordDungeonPassZone then
         local dungeonZoneKey = tostring(mapID) .. ":" .. lower(tostring(zone ~= "" and zone or area))
-        CC.DungeonDwellersPass:RecordZone(dungeonZoneKey, zone ~= "" and zone or area)
+        _G.CreshGamesAPI.RecordDungeonPassZone(dungeonZoneKey, zone ~= "" and zone or area)
     end
 end
 
@@ -349,7 +352,8 @@ function Progression:RecordKill(destGUID, destName)
     root.exploration.totalKills = (root.exploration.totalKills or 0) + 1
     if CC.Achievements and CC.Achievements.RecordWorldKill then CC.Achievements:RecordWorldKill(destGUID, destName) end
     if CC.BattlePass and CC.BattlePass.CheckMilestoneGoals then CC.BattlePass:CheckMilestoneGoals("KILL", root.exploration.totalKills) end
-    if CC.BattlePass and CC.BattlePass.AddPassXP then CC.BattlePass:AddPassXP(1, "WoW mob defeated", true) end
+    -- Cross-addon call (wire 1/3) — Docs/INTEGRATION-CONTRACT.md Phase 7.
+    if _G.CreshGamesAPI and _G.CreshGamesAPI.AddMainPassXP then _G.CreshGamesAPI.AddMainPassXP(1, "WoW mob defeated") end
 end
 
 local events = CreateFrame("Frame")

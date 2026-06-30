@@ -5046,3 +5046,82 @@ SLASH_CRESHCHAT2 = "/cc"
 SlashCmdList.CRESHCHAT = function(message)
     CC:HandleSlashCommand(message)
 end
+
+-- ── TEMPORARY CreshCollect compatibility shim ──────────────────────────────────
+-- Achievements.lua, CombatTracker.lua, AchievementExpansion.lua and ClassAchievements.lua
+-- moved to the separate CreshCollect addon (Docs/MIGRATION.md Phase 4). DungeonAchievements.lua
+-- and Progression.lua still in CreshChat reference CC.Achievements/CC.CombatTracker directly.
+-- This forwards those names from CreshCollect's modules so existing call sites keep working.
+-- When CreshCollect is absent, these stay nil; every call site already nil-guards them.
+-- REMOVE WHEN: DungeonAchievements.lua and Progression.lua have also moved to CreshCollect
+-- (blocked on DungeonAchievements needing soloGames.dungeon data home in CreshGames first,
+-- and Progression.lua needing its internal game-level/exploration split first).
+do
+    local shimFrame = CreateFrame("Frame")
+    shimFrame:RegisterEvent("PLAYER_LOGIN")
+    shimFrame:SetScript("OnEvent", function(self)
+        local collect = _G.CreshCollect
+        if type(collect) == "table" and type(collect.GetModule) == "function" then
+            CC.Achievements = collect:GetModule("Achievements") or CC.Achievements
+            CC.CombatTracker = collect:GetModule("CombatTracker") or CC.CombatTracker
+        end
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end)
+end
+
+-- ── TEMPORARY CreshGames compatibility shim ────────────────────────────────────
+-- All CreshGames Lua/media files now live in the separate CreshGames addon (Phase 5).
+-- DungeonAchievements.lua, Progression.lua, Settings.lua, Developer.lua and UI.lua are still
+-- in CreshChat and reference CC.GameAudio/CC.CardDecks/CC.BattlePass/CC.DungeonDwellersPass/
+-- CC.Games/CC.SoloGames/CC.Tetris. All call sites are already nil-guarded. This block forwards
+-- those names from CreshGames at PLAYER_LOGIN. Also transitively repairs CreshCollect's reverse
+-- bridge (which reads these from _G.CreshChat, not directly from _G.CreshGames).
+-- REMOVE WHEN: Settings.lua, UI.lua, Developer.lua, ProgressHub.lua, DungeonAchievements.lua,
+-- and Progression.lua have all moved to their respective addons and their call sites updated.
+do
+    local shimFrame = CreateFrame("Frame")
+    shimFrame:RegisterEvent("PLAYER_LOGIN")
+    shimFrame:SetScript("OnEvent", function(self)
+        local games = _G.CreshGames
+        if type(games) == "table" and type(games.GetModule) == "function" then
+            CC.GameAudio = games:GetModule("GameAudio") or CC.GameAudio
+            CC.CardDecks = games:GetModule("CardDecks") or CC.CardDecks
+            CC.BattlePass = games:GetModule("BattlePass") or CC.BattlePass
+            CC.DungeonDwellersPass = games:GetModule("DungeonDwellersPass") or CC.DungeonDwellersPass
+            CC.Games = games:GetModule("Games") or CC.Games
+            CC.SoloGames = games:GetModule("SoloGames") or CC.SoloGames
+            CC.Tetris = games:GetModule("Tetris") or CC.Tetris
+        end
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end)
+end
+
+-- ── Integration contract (Phase 7) ─────────────────────────────────────────────
+-- Event dispatch (same pattern as CreshCollect/Core.lua and CreshGames/Core.lua).
+CC._listeners = CC._listeners or {}
+function CC:On(event, fn)
+    if type(event) ~= "string" or type(fn) ~= "function" then return end
+    self._listeners[event] = self._listeners[event] or {}
+    self._listeners[event][#self._listeners[event] + 1] = fn
+end
+function CC:Fire(event, ...)
+    for _, fn in ipairs(self._listeners[event] or {}) do pcall(fn, ...) end
+end
+
+CreshChatAPI = CreshChatAPI or {}
+CreshChatAPI.version = 1
+CreshChatAPI.IsReady = function() return _G.CRESH_CHAT_READY == true end
+
+-- CreshChat fires CRESH_CHAT_READY after both the CreshCollect and CreshGames shims have run,
+-- so any listener that checks for sibling addons can rely on CC.Achievements/CC.BattlePass
+-- already being populated. The shim frames registered earlier in this file fire first (they
+-- were registered before this frame), so that ordering is guaranteed within a single addon.
+do
+    local readyFrame = CreateFrame("Frame")
+    readyFrame:RegisterEvent("PLAYER_LOGIN")
+    readyFrame:SetScript("OnEvent", function(self)
+        _G.CRESH_CHAT_READY = true
+        CC:Fire("CRESH_CHAT_READY")
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end)
+end
