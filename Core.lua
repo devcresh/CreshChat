@@ -5,7 +5,7 @@ _G.CreshChat = CC
 CC.name = ADDON_NAME or "CreshChat"
 CC.BUILD = CC.BUILD or {
     version = "0.2.3",
-    schema = 79,
+    schema = 80,
     interface = 20505,
     stage = "Alpha",
 }
@@ -336,6 +336,7 @@ local defaults = {
         friendsPresence  = true,
         voice            = true,
         notifications    = true,
+        unifiedNotificationCards = false,
     },
 }
 
@@ -4705,6 +4706,30 @@ function CC:InitializeDatabase()
             end
         end
         CreshChatDB.featurePreset = CreshChatDB.featurePreset or "full"
+    end
+
+    if previousVersion < 80 then
+        -- v80 introduces the unified notification card renderer (NotificationCard.lua)
+        -- and per-addon notification-source toggle storage (CreshGames, CreshCollect).
+        -- unifiedNotificationCards defaults to false so existing players keep the
+        -- legacy toast system and opt in via Settings → Notifications.
+        CreshChatDB.features = type(CreshChatDB.features) == "table" and CreshChatDB.features or {}
+        if CreshChatDB.features.unifiedNotificationCards == nil then
+            CreshChatDB.features.unifiedNotificationCards = false
+        end
+        if type(CreshChatDB.notificationSources) ~= "table" then
+            CreshChatDB.notificationSources = {}
+        end
+        for _, profile in pairs(CreshChatDB.characterProfiles or {}) do
+            if type(profile) == "table" then
+                profile.uiData = type(profile.uiData) == "table" and profile.uiData or {}
+                profile.uiData.features = type(profile.uiData.features) == "table" and profile.uiData.features or {}
+                if profile.uiData.features.unifiedNotificationCards == nil then
+                    profile.uiData.features.unifiedNotificationCards = false
+                end
+                profile.version = 80
+            end
+        end
     end
 
     CreshChatDB.version = CC.schemaVersion

@@ -60,11 +60,8 @@ local ICON_SIZE    = 40
 local BADGE_SIZE   = 18
 local ACCENT_H     = 3
 local BTN_W, BTN_H = 58, 18
-local STACK_GAP    = 6
 local ANIM_DUR     = 0.20   -- entry / exit animation seconds
 local ANIM_OFFSET  = 44     -- entry slide distance in screen pixels
-local DUR_NORMAL   = 8
-local DUR_HIGH     = 14
 
 -- ----------------------------------------------------------------
 -- Runtime config helpers
@@ -79,7 +76,14 @@ end
 
 local function getMaxVisible()
     if not CC.db or not CC.db.ui then return 3 end
-    return math.max(1, math.min(10, math.floor(tonumber(CC.db.ui.notifMaxVisible) or 3)))
+    return math.max(1, math.min(10, math.floor(
+        tonumber(CC.db.ui.notifMaxVisible) or tonumber(CC.db.ui.cardMaxVisible) or 3
+    )))
+end
+
+local function getMaxActionable()
+    if not CC.db or not CC.db.ui then return 3 end
+    return math.max(1, math.min(6, math.floor(tonumber(CC.db.ui.notifMaxActionable) or 3)))
 end
 
 local function getScale()
@@ -93,6 +97,36 @@ local function getBase()
         x, y = CC.UI:GetNotificationHubAnchor()
     end
     return x, y
+end
+
+local function getCardW()
+    if not CC.db or not CC.db.ui then return 300 end
+    return math.max(200, math.min(500, math.floor(tonumber(CC.db.ui.cardWidth) or 300)))
+end
+
+local function getCardH()
+    if not CC.db or not CC.db.ui then return 72 end
+    return math.max(40, math.min(120, math.floor(tonumber(CC.db.ui.cardHeight) or 72)))
+end
+
+local function getGap()
+    if not CC.db or not CC.db.ui then return 6 end
+    return math.max(0, math.min(20, math.floor(tonumber(CC.db.ui.cardSpacing) or 6)))
+end
+
+local function getAccentH()
+    if not CC.db or not CC.db.ui then return 3 end
+    return math.max(1, math.min(8, math.floor(tonumber(CC.db.ui.notificationLineHeight) or 3)))
+end
+
+local function getDurNormal()
+    if not CC.db or not CC.db.ui then return 8 end
+    return math.max(1, math.min(60, tonumber(CC.db.ui.priorityCardDuration) or 8))
+end
+
+local function getDurHigh()
+    if not CC.db or not CC.db.ui then return 14 end
+    return math.max(1, math.min(60, tonumber(CC.db.ui.secondaryCardDuration) or 14))
 end
 
 -- ----------------------------------------------------------------
@@ -239,7 +273,7 @@ local function buildCard()
     end)
     card:SetScript("OnLeave", function(self)
         self._hovered   = false
-        self._expiresAt = GetTime() + math.max(0.5, self._pausedRemaining or DUR_NORMAL)
+        self._expiresAt = GetTime() + math.max(0.5, self._pausedRemaining or getDurNormal())
         self._pausedRemaining = nil
         GameTooltip:Hide()
     end)
@@ -356,6 +390,36 @@ function Notifications:DismissCard(card)
 end
 
 -- ----------------------------------------------------------------
+-- DismissAll  (dismiss all active cards and flush the pending queue)
+-- ----------------------------------------------------------------
+
+function Notifications:DismissAll()
+    local toDiscard = {}
+    for _, c in ipairs(activePassiveCards) do toDiscard[#toDiscard + 1] = c end
+    for _, c in ipairs(activeActionCards)  do toDiscard[#toDiscard + 1] = c end
+    for _, c in ipairs(toDiscard) do self:DismissCard(c) end
+    for i = #cardQueue, 1, -1 do cardQueue[i] = nil end
+end
+
+-- ----------------------------------------------------------------
+-- Dismiss(id)  — replaces the stub in Notifications.lua
+-- Searches both active lanes for cards whose _id matches and
+-- dismisses each one.  Returns true if at least one card was found.
+-- ----------------------------------------------------------------
+
+function Notifications:Dismiss(id)
+    if not id then return false end
+    local found = false
+    for _, c in ipairs(activePassiveCards) do
+        if c._id == id and not c._exiting then self:DismissCard(c); found = true end
+    end
+    for _, c in ipairs(activeActionCards) do
+        if c._id == id and not c._exiting then self:DismissCard(c); found = true end
+    end
+    return found
+end
+
+-- ----------------------------------------------------------------
 -- Per-card OnUpdate: entry → reflow → expiry → exit → recycle
 -- ----------------------------------------------------------------
 
@@ -446,9 +510,9 @@ function Notifications:RepositionCards()
     local dir    = getDir()
     local scale  = getScale()
     local baseX, baseY = getBase()
-    local w = CARD_W * scale
-    local h = CARD_H * scale
-    local gap = STACK_GAP
+    local w = getCardW() * scale
+    local h = getCardH() * scale
+    local gap = getGap()
 
     -- Passive stack
     for i, card in ipairs(activePassiveCards) do
@@ -533,6 +597,8 @@ end
 -- ----------------------------------------------------------------
 
 local function populateCard(card, event, accent, scale)
+    card:SetSize(getCardW(), getCardH())
+    card.accentBar:SetHeight(getAccentH())
     local status = string.upper(tostring(event.status or "INFO"))
 
     card.iconBg:SetColorTexture(accent[1] * 0.20, accent[2] * 0.20, accent[3] * 0.20, 1)
@@ -545,6 +611,17 @@ local function populateCard(card, event, accent, scale)
         card.icon:Show()
         card.iconInitial:SetText("")
         hasTexture = true
+    elseif event.classFile then
+        local cf     = string.upper(tostring(event.classFile))
+        local coords = _G.CLASS_ICON_TCOORDS and _G.CLASS_ICON_TCOORDS[cf]
+        if coords then
+            card.icon:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
+            card.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+            card.icon:SetDesaturated(status == "OFFLINE")
+            card.icon:Show()
+            card.iconInitial:SetText("")
+            hasTexture = true
+        end
     end
     if not hasTexture then
         card.icon:SetTexture(nil)
@@ -625,8 +702,27 @@ function Notifications:ShowCard(event, force)
             end
         end
         if not hasCoalesce and #activePassiveCards >= maxV then
+            -- Prevent duplicate coalesce keys from piling up in the queue
+            if event.coalesceKey then
+                for _, q in ipairs(cardQueue) do
+                    if q.coalesceKey == event.coalesceKey then return nil end
+                end
+            end
             table.insert(cardQueue, event)
             return nil
+        end
+    else
+        -- Actionable lane cap: if full, only allow through when a coalesce match exists
+        if #activeActionCards >= getMaxActionable() then
+            local hasCoalesce = false
+            if event.coalesceKey then
+                for _, c in ipairs(activeActionCards) do
+                    if c._coalesceKey == event.coalesceKey and c:IsShown() then
+                        hasCoalesce = true; break
+                    end
+                end
+            end
+            if not hasCoalesce then return nil end
         end
     end
 
@@ -634,7 +730,7 @@ function Notifications:ShowCard(event, force)
                      and event.accent or resolveAccent(event.status, cat)
     local priority = string.upper(tostring(event.priority or "NORMAL"))
     local duration = tonumber(event.duration)
-                     or ((priority == "CRITICAL" or priority == "HIGH") and DUR_HIGH or DUR_NORMAL)
+                     or ((priority == "CRITICAL" or priority == "HIGH") and getDurHigh() or getDurNormal())
     local scale     = getScale()
     local dir       = getDir()
 
@@ -652,8 +748,10 @@ function Notifications:ShowCard(event, force)
     local isNew = (card == nil)
     if isNew then card = self:AcquireCard() end
 
-    -- Identity
-    card._id          = event.id or (cat .. ":" .. tostring(GetTime and GetTime() or 0))
+    -- Identity: preserve _id on coalesce so Dismiss(id) remains valid
+    if isNew then
+        card._id = event.id or (cat .. ":" .. tostring(GetTime and GetTime() or 0))
+    end
     card._sourceAddon = src
     card._category    = cat
     card._coalesceKey = event.coalesceKey
@@ -674,7 +772,12 @@ function Notifications:ShowCard(event, force)
     self:RepositionCards()
     card:SetAlpha(isNew and 0 or 1)
     card:Show()
-    if isNew then startCardAnimation(card) end
+    if isNew then
+        startCardAnimation(card)
+        -- PlayAlertSound's 0.12 s cooldown silently suppresses any duplicate
+        -- that already fired from the Core.lua event handler in the same frame.
+        if CC.PlayAlertSound then CC:PlayAlertSound(cat) end
+    end
     return card
 end
 
@@ -684,10 +787,13 @@ end
 
 function Notifications:Push(event)
     if type(event) ~= "table" then return false end
+    -- Master renderer guard: centralises the flag so callers don't have to.
+    if CC.IsFeatureEnabled and not CC:IsFeatureEnabled("unifiedNotificationCards") then return false end
     local src = string.upper(tostring(event.sourceAddon or "CRESHCHAT"))
     local cat = string.upper(tostring(event.category    or "SYSTEM"))
     if not self:IsCategoryEnabled(src, cat) then return false end
-    return self:ShowCard(event) ~= nil
+    local card = self:ShowCard(event)
+    return card and card._id or false
 end
 
 -- ----------------------------------------------------------------
@@ -722,10 +828,30 @@ local _origSlash = CC.HandleSlashCommand
 if type(_origSlash) == "function" then
     function CC:HandleSlashCommand(input)
         local cmd = string.match(tostring(input or ""), "^(%S*)") or ""
-        if string.lower(cmd) == "notifpreview" then
+        local lc  = string.lower(cmd)
+
+        if lc == "notifpreview" then
             Notifications:Preview()
             return
         end
+
+        if lc == "notifcards" then
+            local arg = string.lower(string.match(tostring(input), "^%S+%s+(%S*)") or "")
+            if arg == "on" then
+                self:SetFeatureEnabled("unifiedNotificationCards", true)
+                self:Print("Unified notification cards: ON")
+            elseif arg == "off" then
+                self:SetFeatureEnabled("unifiedNotificationCards", false)
+                self:Print("Unified notification cards: OFF")
+            else
+                local state = self:IsFeatureEnabled("unifiedNotificationCards") and "ON" or "OFF"
+                self:Print("Unified notification cards: " .. state)
+                self:Print("  /cc notifcards on   — enable the unified renderer")
+                self:Print("  /cc notifcards off  — fall back to legacy toasts")
+            end
+            return
+        end
+
         return _origSlash(self, input)
     end
 end

@@ -99,6 +99,13 @@ local function apply()
     elseif UI.ApplyVisualSettings then UI:ApplyVisualSettings() end
 end
 
+local function repositionCards()
+    if CC.Notifications and CC.Notifications.RepositionCards then
+        CC.Notifications:RepositionCards()
+    end
+    if UI.RepositionToasts then UI:RepositionToasts() end
+end
+
 local function openColorPicker(color, changed)
     local previous = { color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1 }
     local function update()
@@ -912,6 +919,13 @@ function Settings:BuildAlerts(page)
             end
             if UI.RefreshLauncherNotification then UI:RefreshLauncherNotification() end
         end)
+    b:HalfToggle("Unified notification cards", function() return CC:IsFeatureEnabled("unifiedNotificationCards") end,
+        function(v)
+            CC:SetFeatureEnabled("unifiedNotificationCards", v)
+            if not v and CC.Notifications and CC.Notifications.DismissAll then
+                CC.Notifications:DismissAll()
+            end
+        end)
     b:HalfToggle("All notification sounds", function() return CC.db.sounds.master ~= false end, function(v) CC.db.sounds.master = v end)
     b:HalfToggle("Animated C notification outline", function() return CC.db.ui.launcherNotificationPulse ~= false end,
         function(v) CC.db.ui.launcherNotificationPulse = v; if UI.RefreshLauncherNotification then UI:RefreshLauncherNotification() end end)
@@ -921,34 +935,37 @@ function Settings:BuildAlerts(page)
             if v and CC.state.partyInvitePending and CC.SuppressBlizzardPartyInvitePopups then CC:SuppressBlizzardPartyInvitePopups()
             elseif not v and CC.RestoreBlizzardPartyInvitePopups then CC:RestoreBlizzardPartyInvitePopups() end
         end)
-    b:Note("Card visibility and notification sounds are independent. Disabling cards hides their popup and launcher glow, while each category's Sound control still decides whether audio plays. Party invitations fall back to Blizzard's normal invitation window when their card type is disabled.")
+    b:Note("Card visibility and notification sounds are independent. Disabling cards hides their popup and launcher glow, while each category's Sound control still decides whether audio plays. Party invitations fall back to Blizzard's normal invitation window when their card type is disabled. Unified cards requires the master Notifications flag; disabling Notifications disables both renderers. Toggle with /cc notifcards on|off.")
 
     b:Section("Animation and placement")
     b:Dropdown("Overall card animation", function() return CC.db.ui.toastAnimation or "FAN_UP" end,
         function(v) CC.db.ui.toastAnimation = v end, NOTIFICATION_ANIMATION_VALUES, ANIM_DISPLAY)
     b:Slider("Animation speed", 0.08, 0.55, 0.01, function() return CC.db.ui.animationDuration or 0.20 end, function(v) CC.db.ui.animationDuration = v end, sec)
-    b:Dropdown("Card anchor", function() return CC.db.ui.cardLocation or "DOCK" end, function(v) CC.db.ui.cardLocation = v; if UI.RepositionToasts then UI:RepositionToasts() end end,
+    b:Dropdown("Card anchor", function() return CC.db.ui.cardLocation or "DOCK" end, function(v) CC.db.ui.cardLocation = v; repositionCards() end,
         { "DOCK", "MAIN", "SCREEN", "CUSTOM" }, { DOCK = "Attached to C", MAIN = "Above main chat", SCREEN = "Screen grid", CUSTOM = "Custom right-drag" })
-    b:Dropdown("Horizontal position", function() return CC.db.ui.cardHorizontal or "LEFT" end, function(v) CC.db.ui.cardHorizontal = v; CC.db.ui.cardLocation = "SCREEN"; if UI.RepositionToasts then UI:RepositionToasts() end end,
+    b:Dropdown("Horizontal position", function() return CC.db.ui.cardHorizontal or "LEFT" end, function(v) CC.db.ui.cardHorizontal = v; CC.db.ui.cardLocation = "SCREEN"; repositionCards() end,
         { "LEFT", "CENTER", "RIGHT" }, { LEFT = "Left", CENTER = "Middle", RIGHT = "Right" })
-    b:Dropdown("Vertical position", function() return CC.db.ui.cardVertical or "BOTTOM" end, function(v) CC.db.ui.cardVertical = v; CC.db.ui.cardLocation = "SCREEN"; if UI.RepositionToasts then UI:RepositionToasts() end end,
+    b:Dropdown("Vertical position", function() return CC.db.ui.cardVertical or "BOTTOM" end, function(v) CC.db.ui.cardVertical = v; CC.db.ui.cardLocation = "SCREEN"; repositionCards() end,
         { "TOP", "MIDDLE", "BOTTOM" }, { TOP = "Top", MIDDLE = "Middle", BOTTOM = "Bottom" })
-    b:Dropdown("Main-card stack", function() return CC.db.ui.cardStack or "UP" end, function(v) CC.db.ui.cardStack = v; if UI.RepositionToasts then UI:RepositionToasts() end end,
-        { "UP", "DOWN" }, { UP = "Stack upward", DOWN = "Stack downward" })
-    b:Dropdown("Slide-out direction", function() return CC.db.ui.notificationSlideDirection or "BOTTOM" end, function(v) CC.db.ui.notificationSlideDirection = v; if UI.RepositionToasts then UI:RepositionToasts() end end,
+    b:Dropdown("Notification stack direction",
+        function() return CC.db.ui.notifStackDirection or CC.db.ui.cardStack or "UP" end,
+        function(v) CC.db.ui.notifStackDirection = v; repositionCards() end,
+        { "UP", "DOWN", "LEFT", "RIGHT" },
+        { UP = "Stack upward", DOWN = "Stack downward", LEFT = "Stack leftward", RIGHT = "Stack rightward" })
+    b:Dropdown("Slide-out direction", function() return CC.db.ui.notificationSlideDirection or "BOTTOM" end, function(v) CC.db.ui.notificationSlideDirection = v; repositionCards() end,
         { "TOP", "BOTTOM", "LEFT", "RIGHT" }, { TOP = "Above the main card", BOTTOM = "Below the main card", LEFT = "Left of the main card", RIGHT = "Right of the main card" })
 
     b:Section("Card size and timing")
     b:Slider("Normal slide-out time", 3, 30, 1, function() return CC.db.ui.priorityCardDuration or 10 end, function(v) CC.db.ui.priorityCardDuration = v; CC.db.alertDuration = v end, sec)
     b:Slider("Full-size main-card time", 2, 20, 1, function() return CC.db.ui.secondaryCardDuration or 6 end, function(v) CC.db.ui.secondaryCardDuration = v end, sec)
-    b:Slider("Card width", 230, 440, 10, function() return CC.db.ui.cardWidth or 300 end, function(v) CC.db.ui.cardWidth = v; if UI.RepositionToasts then UI:RepositionToasts() end end, px)
-    b:Slider("Card height", 56, 104, 2, function() return CC.db.ui.cardHeight or 68 end, function(v) CC.db.ui.cardHeight = v; if UI.RepositionToasts then UI:RepositionToasts() end end, px)
-    b:Slider("Overall card scale", 0.65, 1.50, 0.05, function() return CC.db.ui.notificationScale or CC.db.ui.cardScale or 0.95 end, function(v) CC.db.ui.notificationScale = v; CC.db.ui.cardScale = v; if UI.RepositionToasts then UI:RepositionToasts() end end, pct)
-    b:Slider("Stack spacing", 0, 16, 1, function() return CC.db.ui.cardSpacing or 6 end, function(v) CC.db.ui.cardSpacing = v; if UI.RepositionToasts then UI:RepositionToasts() end end, px)
+    b:Slider("Card width", 230, 440, 10, function() return CC.db.ui.cardWidth or 300 end, function(v) CC.db.ui.cardWidth = v; repositionCards() end, px)
+    b:Slider("Card height", 56, 104, 2, function() return CC.db.ui.cardHeight or 68 end, function(v) CC.db.ui.cardHeight = v; repositionCards() end, px)
+    b:Slider("Overall card scale", 0.65, 1.50, 0.05, function() return CC.db.ui.notificationScale or CC.db.ui.cardScale or 0.95 end, function(v) CC.db.ui.notificationScale = v; CC.db.ui.cardScale = v; repositionCards() end, pct)
+    b:Slider("Stack spacing", 0, 16, 1, function() return CC.db.ui.cardSpacing or 6 end, function(v) CC.db.ui.cardSpacing = v; repositionCards() end, px)
     b:Slider("Maximum slide-outs", 1, 10, 1, function() return CC.db.ui.cardMaxVisible or 6 end, function(v) CC.db.ui.cardMaxVisible = v end, function(v) return floor(v + 0.5) end)
     b:Slider("Maximum main cards", 1, 8, 1, function() return CC.db.ui.secondaryCardMaxVisible or 4 end, function(v) CC.db.ui.secondaryCardMaxVisible = v end, function(v) return floor(v + 0.5) end)
     b:Slider("Card accent thickness", 2, 6, 1, function() return CC.db.ui.notificationLineHeight or 3 end,
-        function(v) CC.db.ui.notificationLineHeight = v; if UI.RepositionToasts then UI:RepositionToasts() end end, px)
+        function(v) CC.db.ui.notificationLineHeight = v; repositionCards() end, px)
     b:Slider("Compact card width", 0.72, 0.96, 0.02, function() return CC.db.ui.secondaryCardWidthRatio or 0.88 end,
         function(v) CC.db.ui.secondaryCardWidthRatio = v; if UI.RepositionToasts then UI:RepositionToasts() end end, pct)
     b:Slider("Compact card height", 0.62, 0.92, 0.02, function() return CC.db.ui.secondaryCardHeightRatio or 0.80 end,

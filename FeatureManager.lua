@@ -33,6 +33,7 @@ CC.defaultFeatures = {
     friendsPresence  = true,
     voice            = true,
     notifications    = true,
+    unifiedNotificationCards = false,
 }
 
 -- When enabling X, these must also be enabled.
@@ -94,7 +95,8 @@ CC.featureDisplayNames = {
     questCapture     = "Quest Capture",
     friendsPresence  = "Friends and Presence",
     voice            = "Voice Calls",
-    notifications    = "Notifications",
+    notifications            = "Notifications",
+    unifiedNotificationCards = "Unified Notification Cards",
 }
 
 CC.featureDescriptions = {
@@ -108,7 +110,8 @@ CC.featureDescriptions = {
     questCapture     = "Captures NPC gossip and quest dialogue into the Quest tab.",
     friendsPresence  = "Monitors friend online/offline state and shows presence notification cards.",
     voice            = "CreshChat voice call system. Requires Chat.",
-    notifications    = "Notification cards (toasts) for whispers, guild, quests, party invites and system events.",
+    notifications            = "Notification cards (toasts) for whispers, guild, quests, party invites and system events.",
+    unifiedNotificationCards = "Use the new unified card renderer instead of the legacy toast system. Requires Notifications to be enabled. Off by default for a controlled rollout.",
 }
 
 -- Display order for the settings page.

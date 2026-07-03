@@ -2806,3 +2806,20 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         if Games.active then Games:Send(Games.active.opponent, "X", Games.active.id, "Logged out") end
     end
 end)
+
+-- ── CRESHGAMES notification source registration ──────────────────────────────
+-- Runs at file scope; Notifications.lua is guaranteed to have loaded first
+-- (TOC order 10 vs 26).  Settings:Build() is lazy so the categories appear
+-- in the Notifications settings panel automatically on first open.
+
+local function registerGamesCategories()
+    local N = CC.Notifications
+    if not N or not N.RegisterSource then return end
+    N:RegisterSource("CRESHGAMES", "CreshGames")
+    N:RegisterCategory("CRESHGAMES", "GAME_INVITE", "Game Invitations", "Incoming game challenges from friends — shown as an actionable card.",             { priority = "CRITICAL" })
+    N:RegisterCategory("CRESHGAMES", "GAME_RESULT", "Game Results",     "Win, loss and draw outcomes from multiplayer games.",                               { priority = "NORMAL"   })
+    N:RegisterCategory("CRESHGAMES", "CHALLENGE",   "Challenges",       "Outgoing challenge confirmations and opponent accept/decline responses.",            { priority = "NORMAL"   })
+    N:RegisterCategory("CRESHGAMES", "BATTLE_PASS", "Battle Pass",      "Battle Pass level completions and reward-track claims.",                            { priority = "LOW"      })
+    N:RegisterCategory("CRESHGAMES", "REWARD",      "Rewards",          "Tetris milestones, dungeon crate drops and other in-game reward notifications.",   { priority = "LOW"      })
+end
+registerGamesCategories()

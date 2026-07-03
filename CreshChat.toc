@@ -32,6 +32,7 @@ Achievements.lua
 AchievementExpansion.lua
 ClassAchievements.lua
 DungeonAchievements.lua
+CreshCollect\CreshCollect.lua
 CombatTracker.lua
 ProgressHub.lua
 GameAudio.lua
