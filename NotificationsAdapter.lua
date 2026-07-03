@@ -23,7 +23,9 @@ local UI            = CC.UI
 local Notifications = CC.Notifications
 
 local function featureOn()
-    return CC.IsFeatureEnabled and CC:IsFeatureEnabled("notifications")
+    return CC.IsFeatureEnabled
+        and CC:IsFeatureEnabled("notifications")
+        and CC:IsFeatureEnabled("unifiedNotificationCards")
 end
 
 -- kind / notifKind → registered CRESHCHAT category
@@ -181,7 +183,7 @@ function UI:ShowSlideToast(title, message, status, key, playerName, kind, target
                 end
             end
 
-            Notifications:Push({
+            local evt = {
                 sourceAddon = "CRESHCHAT",
                 category    = category,
                 priority    = CAT_PRI[category] or "NORMAL",
@@ -189,7 +191,13 @@ function UI:ShowSlideToast(title, message, status, key, playerName, kind, target
                 title       = ttl,
                 detail      = detail,
                 coalesceKey = coalesceKey,
-            })
+            }
+            if k == "FRIEND" and playerName and playerName ~= "" then
+                local cached = CC.GetCachedPlayerInfo
+                               and CC:GetCachedPlayerInfo(tostring(playerName)) or nil
+                if cached then evt.classFile = cached.classFile end
+            end
+            Notifications:Push(evt)
         end
         return
     end
@@ -258,6 +266,20 @@ function UI:ShowToast(channel, target, message)
             else
                 title = CC:ShortName(sender)
             end
+            local guid   = message and message.guid or nil
+            local cached = CC.GetCachedPlayerInfo
+                           and CC:GetCachedPlayerInfo(tostring(sender), guid) or nil
+            local replyTo = tostring(target or sender or "")
+            local replyFn
+            if (notifKind == "WHISPER" or notifKind == "BN_WHISPER") and replyTo ~= "" then
+                replyFn = function(card)
+                    Notifications:DismissCard(card)
+                    if CC.EnsureWhisperConversation and CC.UI and CC.UI.OpenChannel then
+                        local conv = CC:EnsureWhisperConversation(replyTo)
+                        if conv then CC.UI:OpenChannel("WHISPER", conv) end
+                    end
+                end
+            end
             Notifications:Push({
                 sourceAddon = "CRESHCHAT",
                 category    = category,
@@ -266,6 +288,8 @@ function UI:ShowToast(channel, target, message)
                 title       = title,
                 detail      = text,
                 coalesceKey = category .. ":" .. tostring(target or sender),
+                classFile   = cached and cached.classFile or nil,
+                actions     = replyFn and { reply = replyFn } or nil,
             })
         end
         return
